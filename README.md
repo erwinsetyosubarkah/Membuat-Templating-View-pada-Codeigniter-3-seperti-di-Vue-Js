@@ -28,7 +28,7 @@ Ini bukan fake Vue, tapi Vue-pattern yang realistis untuk CI3.
 
 ---
 
-## 1️⃣ STRUKTUR FOLDER
+## 1. STRUKTUR FOLDER
 ```
 application/
  ├── controllers/
@@ -50,7 +50,7 @@ assets/
 
 ---
 
-## 2️⃣ CORE COMPONENT HELPER (ENGINE)
+## 2. CORE COMPONENT HELPER (ENGINE)
 
 📁 application/helpers/component_helper.php
 ```
@@ -91,7 +91,7 @@ $autoload['helper'] = ['component'];
 
 ---
 
-## 3️⃣ MAIN APP TEMPLATE (LAYOUT)
+## 3. MAIN APP TEMPLATE (LAYOUT)
 
 📁 application/views/layouts/app.php
 ```
@@ -117,7 +117,7 @@ $autoload['helper'] = ['component'];
 
 ---
 
-## 4️⃣ INPUT COMPONENT (FULL FEATURE)
+## 4 INPUT COMPONENT (FULL FEATURE)
 
 📁 application/views/components/input.php
 ```
@@ -180,7 +180,69 @@ if (!empty($p['emits'])) {
 
 ---
 
-## 5️⃣ SLOT COMPONENT (CARD)
+## 5. COMPONENT TEXTAREA
+
+📁 application/views/components/textarea.php
+```
+<?php
+// DEFAULT PROPS (Vue-style)
+$defaults = [
+    'label'      => null,
+    'name'       => null,
+    'model'      => null,
+    'modelValue' => '',
+    'rows'       => 4,
+    'class'      => '',
+    'required'   => false,
+    'disabled'   => false,
+    'emits'      => [],
+];
+
+// MERGE PROPS
+$p = array_merge($defaults, $props);
+
+// SPECIAL BINDINGS
+$attrs  = $props[':attrs'] ?? [];
+$events = $props['@events'] ?? [];
+
+// EVENT ATTRIBUTES
+$eventAttrs = [];
+foreach ($events as $event => $handler) {
+    $eventAttrs["on{$event}"] = "{$handler}(this)";
+}
+
+// EMITS ATTRIBUTE
+$emitAttr = '';
+if (!empty($p['emits'])) {
+    $emitAttr = 'data-emits="' . implode(',', $p['emits']) . '"';
+}
+?>
+
+<div class="form-group <?= html_escape($p['class']) ?>">
+    <?php if ($p['label']): ?>
+        <label><?= html_escape($p['label']) ?></label>
+    <?php endif; ?>
+
+    <textarea
+        name="<?= $p['name'] ?>"
+        rows="<?= (int) $p['rows'] ?>"
+        data-component="textarea"
+        data-model="<?= html_escape($p['model']) ?>"
+        <?= $emitAttr ?>
+        class="form-control"
+        <?= bind_attrs([
+            'required' => $p['required'],
+            'disabled' => $p['disabled'],
+            ...$attrs,
+            ...$eventAttrs
+        ]) ?>
+    ><?= html_escape($p['modelValue']) ?><?= $slot ?></textarea>
+</div>
+```
+
+---
+
+## 6. SLOT COMPONENT (CARD)
 
 📁 application/views/components/card.php
 ```
@@ -195,7 +257,7 @@ if (!empty($p['emits'])) {
 
 ---
 
-## 6️⃣ JAVASCRIPT RUNTIME (V-MODEL + EMITS)
+## 7. JAVASCRIPT RUNTIME (V-MODEL + EMITS)
 
 📁 assets/js/components.js
 ```
@@ -203,8 +265,7 @@ const Store = {};
 
 document.addEventListener('DOMContentLoaded', () => {
 
-  document.querySelectorAll('[data-component="input"]').forEach(el => {
-
+  document.querySelectorAll('[data-component]').forEach(el => {
     const model = el.dataset.model;
     const emits = el.dataset.emits?.split(',') || [];
 
@@ -240,7 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 ---
 
-## 7️⃣ CONTROLLER (MAIN APP)
+## 8. CONTROLLER (MAIN APP)
 
 📁 application/controllers/Example.php
 ```
@@ -256,7 +317,7 @@ class Example extends CI_Controller
 
 ---
 
-## 8️⃣ PAGE USAGE (CONSUMER SIDE)
+## 9. PAGE USAGE (CONSUMER SIDE)
 
 📁 application/views/pages/example.php
 ```
@@ -291,7 +352,7 @@ document.addEventListener('update', e => {
 
 ---
 
-## 9️⃣ HASIL AKHIR (REAL)
+## 10. HASIL AKHIR (REAL)
 
 * Props & default props
 * Boolean props (```required```, ```disabled```)
