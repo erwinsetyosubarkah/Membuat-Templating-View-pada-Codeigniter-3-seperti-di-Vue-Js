@@ -1,52 +1,58 @@
 # Membuat Templating View pada Codeigniter 3 seperti di Vue Js
-## 🎯 Target Akhir (Vue-like Usage)
-```
-<?= component('input', [
-    'modelValue' => set_value('email'),
-    'name'       => 'email',
-    'label'      => 'Email',
-    'type'       => 'email',
-    'required'   => true,
-    'disabled'   => false,
-    'class'      => 'mb-3',
-    ':attrs'     => [
-        'placeholder' => 'Masukkan email',
-        'maxlength'  => 100
-    ],
-    '@events'    => [
-        'input' => 'onInput',
-        'blur'  => 'validate'
-    ]
-]) ?>
-```
+## 🎯 FITUR YANG DIDUKUNG (CONFIRMED)
+| Vue Feature     | CI3 Component |
+| --------------- | ------------- |
+| props           | ✅             |
+| default props   | ✅             |
+| boolean props   | ✅             |
+| slot            | ✅             |
+| v-bind attrs    | ✅             |
+| @events         | ✅             |
+| class binding   | ✅             |
+| v-model (basic) | ✅             |
+| emits           | ✅             |
 
-Mirip Vue:
+---
+
+## 🧠 ARSITEKTUR INTI
 ```
-<Input
-  v-model="email"
-  type="email"
-  required
-  placeholder="Masukkan email"
-  @input="onInput"
-/>
+PHP (Server)
+└── render component + props + slot
+HTML (Contract)
+└── data-* attributes
+JavaScript (Runtime)
+└── v-model + emits + events
 ```
 
-## 🧠 Konsep Mapping Vue → CI3
-| Vue            | CI3 Component  |
-| -------------- | -------------- |
-| props          | `$props` array |
-| default props  | `$defaults`    |
-| v-bind="attrs" | `:attrs`       |
-| @event         | `@events`      |
-| v-model        | `modelValue`   |
-| slot           | `$slot`        |
-| class binding  | `class`        |
-| boolean props  | `true / false` |
+Ini bukan fake Vue, tapi Vue-pattern yang realistis untuk CI3.
 
+---
 
-## 1️⃣ Upgrade Helper Component (Core Engine)
+## 1️⃣ STRUKTUR FOLDER
+```
+application/
+ ├── controllers/
+ │   └── Example.php
+ ├── helpers/
+ │   └── component_helper.php
+ ├── views/
+ │   ├── layouts/
+ │   │   └── app.php
+ │   ├── pages/
+ │   │   └── example.php
+ │   └── components/
+ │       ├── input.php
+ │       └── card.php
+assets/
+ └── js/
+     └── components.js
+```
 
-application/helpers/component_helper.php
+---
+
+## 2️⃣ CORE COMPONENT HELPER (ENGINE)
+
+📁 application/helpers/component_helper.php
 ```
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
@@ -55,63 +61,97 @@ function component($name, $props = [], $slot = null)
 {
     $CI =& get_instance();
 
-    $data = [
+    return $CI->load->view("components/{$name}", [
         'props' => $props,
         'slot'  => $slot
-    ];
-
-    return $CI->load->view("components/{$name}", $data, TRUE);
+    ], TRUE);
 }
-```
 
-👉 Sekarang SEMUA props dikirim mentah (seperti Vue).
-
-
-## 2️⃣ Utility Helper (Vue-like Binding)
-Tambahkan helper kecil:
-```
-function attr_string($attrs = [])
+/**
+ * Vue-like v-bind attribute renderer
+ */
+function bind_attrs($attrs = [])
 {
     $html = '';
     foreach ($attrs as $key => $value) {
         if ($value === true) {
             $html .= " {$key}";
         } elseif ($value !== false && $value !== null) {
-            $html .= " {$key}=\"".html_escape($value)."\"";
+            $html .= " {$key}=\"" . html_escape($value) . "\"";
         }
     }
     return $html;
 }
 ```
 
+📌 Autoload:
+```
+$autoload['helper'] = ['component'];
+```
 
-## 3️⃣ Component Input (FULL Vue Props Support)
-views/components/input.php
+---
+
+## 3️⃣ MAIN APP TEMPLATE (LAYOUT)
+
+📁 application/views/layouts/app.php
+```
+<!DOCTYPE html>
+<html>
+<head>
+    <title><?= $title ?? 'CI3 Vue-like Component' ?></title>
+    <style>
+        body { font-family: Arial; padding:40px }
+        .card { border:1px solid #ddd; padding:16px; margin-bottom:16px }
+        .form-control { width:100%; padding:8px }
+        .mb-3 { margin-bottom:12px }
+    </style>
+</head>
+<body>
+
+<?= $content ?>
+
+<script src="/assets/js/components.js"></script>
+</body>
+</html>
+```
+
+---
+
+## 4️⃣ INPUT COMPONENT (FULL FEATURE)
+
+📁 application/views/components/input.php
 ```
 <?php
-// === DEFAULT PROPS (Vue style) ===
+// DEFAULT PROPS (Vue style)
 $defaults = [
     'type'       => 'text',
-    'name'       => null,
     'label'      => null,
+    'name'       => null,
+    'model'      => null,
     'modelValue' => '',
     'class'      => '',
     'required'   => false,
     'disabled'   => false,
+    'emits'      => [],
 ];
 
-// merge props
+// MERGE PROPS
 $p = array_merge($defaults, $props);
 
-// extra bindings
+// SPECIAL BINDINGS
 $attrs  = $props[':attrs'] ?? [];
 $events = $props['@events'] ?? [];
-$error  = $props['error'] ?? null;
 
-// generate event attrs
+// EVENT ATTRIBUTES
 $eventAttrs = [];
 foreach ($events as $event => $handler) {
     $eventAttrs["on{$event}"] = "{$handler}(this)";
+}
+
+// EMITS ATTRIBUTE
+$emitAttr = '';
+if (!empty($p['emits'])) {
+    $emitAttr = 'data-emits="' . implode(',', $p['emits']) . '"';
 }
 ?>
 
@@ -124,25 +164,25 @@ foreach ($events as $event => $handler) {
         type="<?= $p['type'] ?>"
         name="<?= $p['name'] ?>"
         value="<?= html_escape($p['modelValue']) ?>"
-        <?= attr_string([
+        data-component="input"
+        data-model="<?= html_escape($p['model']) ?>"
+        <?= $emitAttr ?>
+        class="form-control"
+        <?= bind_attrs([
             'required' => $p['required'],
             'disabled' => $p['disabled'],
             ...$attrs,
             ...$eventAttrs
         ]) ?>
-        class="form-control <?= $error ? 'is-invalid' : '' ?>"
     >
-
-    <?php if ($error): ?>
-        <small style="color:red"><?= $error ?></small>
-    <?php endif; ?>
 </div>
 ```
 
-🔥 Ini sudah mendekati engine Vue props
+---
 
+## 5️⃣ SLOT COMPONENT (CARD)
 
-## 4️⃣ Component Card (Slot 100%)
+📁 application/views/components/card.php
 ```
 <div class="card">
     <?php if (!empty($props['title'])): ?>
@@ -153,103 +193,111 @@ foreach ($events as $event => $handler) {
 </div>
 ```
 
+---
 
-## 5️⃣ JavaScript (Event & Model Simulation)
-assets/js/components.js
+## 6️⃣ JAVASCRIPT RUNTIME (V-MODEL + EMITS)
+
+📁 assets/js/components.js
 ```
-function onInput(el) {
-  console.log('value:', el.value);
+const Store = {};
+
+document.addEventListener('DOMContentLoaded', () => {
+
+  document.querySelectorAll('[data-component="input"]').forEach(el => {
+
+    const model = el.dataset.model;
+    const emits = el.dataset.emits?.split(',') || [];
+
+    // INIT v-model
+    if (model) {
+      Store[model] = el.value;
+    }
+
+    el.addEventListener('input', () => {
+
+      if (model) {
+        Store[model] = el.value;
+      }
+
+      // EMITS
+      emits.forEach(event => {
+        document.dispatchEvent(
+          new CustomEvent(event, {
+            detail: {
+              model,
+              value: el.value
+            }
+          })
+        );
+      });
+
+    });
+
+  });
+
+});
+```
+
+---
+
+## 7️⃣ CONTROLLER (MAIN APP)
+
+📁 application/controllers/Example.php
+```
+class Example extends CI_Controller
+{
+    public function index()
+    {
+        $data['content'] = $this->load->view('pages/example', [], TRUE);
+        $this->load->view('layouts/app', $data);
+    }
 }
-
-function validate(el) {
-  if (!el.value) {
-    el.style.borderColor = 'red';
-  }
-}
 ```
 
-6️⃣ Boolean Props (Vue Compatible)
+---
 
-Vue:
-```
-<Input disabled />
-```
+## 8️⃣ PAGE USAGE (CONSUMER SIDE)
 
-CI3:
+📁 application/views/pages/example.php
 ```
-<?= component('input', [
-    'disabled' => true
-]) ?>
-```
+<?= component('card', ['title' => 'Vue-like Input Component'], '
 
-✔ otomatis jadi:
-```
-<input disabled>
-```
+'.component('input', [
+    "label" => "Email",
+    "name" => "email",
+    "model" => "email",
+    "modelValue" => "",
+    "required" => true,
+    "class" => "mb-3",
+    ":attrs" => [
+        "placeholder" => "Masukkan email",
+        "maxlength" => 100
+    ],
+    "@events" => [
+        "blur" => "console.log"
+    ],
+    "emits" => ["update"]
+]).'
 
+') ?>
 
-## 7️⃣ Dynamic Attribute Binding (v-bind)
-
-Vue:
-```
-<Input v-bind="attrs" />
-```
-
-
-CI3:
-```
-<?= component('input', [
-    ':attrs' => [
-        'placeholder' => 'Email',
-        'maxlength' => 50,
-        'data-id' => 12
-    ]
-]) ?>
+<script>
+document.addEventListener('update', e => {
+    console.log('EMIT update:', e.detail);
+    console.log('v-model value:', Store[e.detail.model]);
+});
+</script>
 ```
 
+---
 
-## 8️⃣ Event Binding (@click, @input)
+## 9️⃣ HASIL AKHIR (REAL)
 
-Vue:
-```
-<Input @input="onInput" />
-```
-
-CI3:
-```
-<?= component('input', [
-    '@events' => [
-        'input' => 'onInput'
-    ]
-]) ?>
-```
-
-## 9️⃣ Supported Vue Props (Checklist)
-| Vue Feature     | Status        |
-| --------------- | ------------- |
-| props           | ✅             |
-| default props   | ✅             |
-| boolean props   | ✅             |
-| slot            | ✅             |
-| v-bind attrs    | ✅             |
-| @events         | ✅             |
-| class binding   | ✅             |
-| v-model (basic) | ✅             |
-| emits           | ⚠️ JS only    |
-| reactivity      | ❌ (JS needed) |
-| computed        | ❌             |
-
-
-## 🧠 Kesimpulan Jujur
-
-✔ Ini bukan Vue, tapi:
-* Pola sama
-* Cara pakai sama
-* Struktur sama
-* Developer experience mirip
-
-🔥 Sangat cocok untuk:
-* CI3 legacy
-* Tanpa build tools
-* Team PHP murni
-* SSR + progressive enhancement
+✔ Props & default props
+✔ Boolean props (required, disabled)
+✔ Slot (card)
+✔ v-bind attrs (:attrs)
+✔ Event binding (@events)
+✔ Class binding
+✔ v-model (Store)
+✔ Emits (CustomEvent)
