@@ -293,11 +293,11 @@ document.addEventListener('update', e => {
 
 ## 9️⃣ HASIL AKHIR (REAL)
 
-✔ Props & default props
-✔ Boolean props (required, disabled)
-✔ Slot (card)
-✔ v-bind attrs (:attrs)
-✔ Event binding (@events)
-✔ Class binding
-✔ v-model (Store)
-✔ Emits (CustomEvent)
+* Props & default props
+* Boolean props (```required```, ```disabled```)
+* Slot (```card```)
+* v-bind attrs (```:attrs```)
+* Event binding (```@events```)
+* Class binding
+* v-model (Store)
+* Emits (CustomEvent)
